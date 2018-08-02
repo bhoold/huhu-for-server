@@ -38,6 +38,7 @@ module.exports = {
 		"_": false,
 		"Site": false,
 		"module": false,
-		"require": false
+		"require": false,
+		"exports": false
     }
 };
