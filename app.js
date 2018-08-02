@@ -1,15 +1,19 @@
 const express = require('express')();
 const http = require('http').Server(express);
+const bodyParser = require('body-parser');
 
 
 const config = require('./config');
-console.log(config)
 
 const route = require('./routes');
 
 
+let jsonParser = bodyParser.json();
+//let urlencodedParser = bodyParser.urlencoded({ extended: false });
 
-express.all('*', function(req, res, next) {
+
+
+express.all('*', jsonParser, function(req, res, next) {
 	if(req.headers.origin){
 		res.header("Access-Control-Allow-Origin", "*");
 		res.header("Access-Control-Allow-Headers", "tokenStr,Content-Type,Content-Length Authorization,Accept,X-Requested-With");
