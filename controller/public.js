@@ -9,9 +9,9 @@ const SUCCESS = 1000,
 module.exports = {
 	//账号注册
 	signUp (req, res) {
-		let username = req.username,
-			password = req.password,
-			repassword = req.repassword;
+		let username = req.body.username,
+			password = req.body.password,
+			repassword = req.body.repassword;
 		if(password !== repassword){
 			res.send({
 				code: ERROR,
@@ -70,8 +70,8 @@ module.exports = {
 
 	//登录
 	signIn (req, res) {
-		let username = req.username,
-			password = req.password;
+		let username = req.body.username,
+			password = req.body.password;
 
 		if(!username || !password){
 			res.send({
@@ -106,7 +106,8 @@ module.exports = {
 							code: SUCCESS,
 							message: "登录成功",
 							data: {
-								id: result[0]._id.toString()
+								id: result[0]._id.toString(),
+								username: result[0].username
 							}
 						});
 					}else{

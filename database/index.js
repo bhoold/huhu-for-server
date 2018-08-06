@@ -1,4 +1,5 @@
 const MongoClient = require('mongodb').MongoClient;
+const ObjectID = require('mongodb').ObjectID;
 
 const config = require('../config').db;
 
@@ -21,6 +22,7 @@ function getDb(callback) {
 
 
 module.exports = {
+	ObjectID,
 	execute (param) {
 		MongoClient.connect(config.url, { useNewUrlParser: true }, function(err, client) {
 			if (err) {console.log(111)
