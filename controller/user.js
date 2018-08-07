@@ -54,6 +54,9 @@ module.exports = {
 			}
 		});
 	},
+	getState (req, res) {
+		res.send("我是获取状态页");
+	},
 	create (req, res) {
 		res.send("我是用户添加页");
 	}

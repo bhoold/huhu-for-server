@@ -1,6 +1,7 @@
 const express = require('express')();
 const http = require('http').Server(express);
 const io = require('socket.io')(http);
+const redis = require('socket.io-redis');
 const bodyParser = require('body-parser');
 
 
@@ -43,6 +44,9 @@ let userList = {};
 
 const MSGTYPE = require('./config/im/msgtype');
 const NOTIFY = require('./config/im/notify');
+
+const adapter = redis({ host: 'localhost', port: 6379 });
+io.adapter(adapter);
 
 
 
@@ -87,6 +91,7 @@ io.on('connection', function(socket){
 					code: ERROR,
 					message: "登录信息错误"
 				});
+				socket.disconnect(true);
 			}
 		}else{
 			validateToken({
@@ -112,6 +117,7 @@ io.on('connection', function(socket){
 						code: ERROR,
 						message: res.message || "登录失败"
 					});
+					socket.disconnect(true);
 				}
 			});
 		}
@@ -121,6 +127,8 @@ io.on('connection', function(socket){
 			code: ERROR,
 			message: "请提供登录信息"
 		});
+		socket.disconnect(true);
+
 	}
 });
 
