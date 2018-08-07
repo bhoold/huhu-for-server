@@ -41,6 +41,11 @@ let userList = {};
 
 
 
+const MSGTYPE = require('./config/im/msgtype');
+const NOTIFY = require('./config/im/notify');
+
+
+
 // middleware
 io.use((socket, next) => {
 	const query = socket.handshake.query;
@@ -63,62 +68,100 @@ io.on('connection', function(socket){
 	const query = socket.handshake.query;
 
 	if(query.id && query.username){
-		validateToken({
-			id: query.id,
-			username: query.username
-		}, function(res) {
-			if(res.code === SUCCESS){
-				socket.emit('login', {
+		if(userList[query.id]){
+			if(userList[query.id].username === query.username){
+
+				socket.emit(MSGTYPE.NOTIFY, {
+					type: NOTIFY.LOGIN,
 					code: SUCCESS,
 					message: "登录成功"
 				});
-				
-				userList[query.id] = {
-					username: query.username,
-					socket: socket
-				};
-				socket.on('message', function(msg){
-					if(msg.sender && msg.to && msg.message){
-						if(msg.to.id){
-							if(userList[msg.to.id]){
-								userList[msg.to.id].socket.emit('message', {
-									date: new Date().getTime(),
-									from: msg.sender,
-									message: msg.message
-								})
-							}
-						}else{
-							socket.broadcast.emit('message', {
-								date: new Date().getTime(),
-								from: msg.sender,
-								message: msg.message
-							});
-						}
-					}
-				});
 
-				socket.broadcast.emit('event', query.username + '上线了'); //当前连接用户收不到这条信息
-				socket.on('disconnect', function(){
-					socket.broadcast.emit('event', query.username + '下线了'); //当前连接用户收不到这条信息
-				});
-			
-
+				if(!userList[query.id].sockets.includes(socket)){
+					userList[query.id].sockets.push(socket);
+					listenSocket(socket, query, userList);
+				}
 			}else{
-				socket.emit('login', {
+				socket.emit(MSGTYPE.NOTIFY, {
+					type: NOTIFY.LOGIN,
 					code: ERROR,
-					message: res.message || "登录失败"
+					message: "登录信息错误"
 				});
 			}
-		});
+		}else{
+			validateToken({
+				id: query.id,
+				username: query.username
+			}, function(res) {
+				if(res.code === SUCCESS){
+					socket.emit(MSGTYPE.NOTIFY, {
+						type: NOTIFY.LOGIN,
+						code: SUCCESS,
+						message: "登录成功"
+					});
+					
+					userList[query.id] = {
+						username: query.username,
+						sockets: [socket]
+					};
+
+					listenSocket(socket, query, userList);
+				}else{
+					socket.emit(MSGTYPE.NOTIFY, {
+						type: NOTIFY.LOGIN,
+						code: ERROR,
+						message: res.message || "登录失败"
+					});
+				}
+			});
+		}
 	}else{
-		socket.emit('login', {
+		socket.emit(MSGTYPE.NOTIFY, {
+			type: NOTIFY.LOGIN,
 			code: ERROR,
 			message: "请提供登录信息"
 		});
-
 	}
-
 });
+
+
+function listenSocket(socket, query, userList) {
+
+	socket.broadcast.emit(MSGTYPE.ONLINE, {
+		id: query.id,
+		username: query.username
+	}); //当前连接用户收不到这条信息
+
+	socket.on('disconnect', function(){
+		socket.broadcast.emit(MSGTYPE.OFFLINE, {
+			id: query.id,
+			username: query.username
+		}); //当前连接用户收不到这条信息
+	});
+
+	socket.on(MSGTYPE.MESSAGE, function(msg){
+		if(msg.sender && msg.to && msg.message){
+			let time = new Date().getTime();
+			if(msg.to.id){
+				if(userList[msg.to.id]){
+					userList[msg.to.id].socket.forEach(item => {
+						item.emit(MSGTYPE.MESSAGE, {
+							date: time,
+							from: msg.sender,
+							message: msg.message
+						});
+					});
+				}
+			}else{
+				socket.broadcast.emit(MSGTYPE.MESSAGE, {
+					date: time,
+					from: msg.sender,
+					message: msg.message
+				});
+			}
+		}
+	});
+}
 
 
 function validateToken (msg, callback) {
