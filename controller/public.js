@@ -26,6 +26,13 @@ module.exports = {
 			param: {username},
 			success (cursor) {
 				cursor.toArray(function(err, result){
+					if(err){
+						res.send({
+							code: ERROR,
+							message: err.message || "数据库查询失败"
+						});
+						return;
+					}
 					if(result.length){
 						res.send({
 							code: ERROR,

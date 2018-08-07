@@ -10,7 +10,13 @@ function getDb(callback) {
 		callback(db);
 		return;
 	}
-	MongoClient.connect(config.url, { useNewUrlParser: true }, function(err, client) {
+	MongoClient.connect(config.url, {
+		auth: {
+			user: "admin",
+			password: "admin"
+		},
+		useNewUrlParser: true
+	}, function(err, client) {
 		if (err) {
 			callback(err);
 			return;
@@ -24,9 +30,16 @@ function getDb(callback) {
 module.exports = {
 	ObjectID,
 	execute (param) {
-		MongoClient.connect(config.url, { useNewUrlParser: true }, function(err, client) {
-			if (err) {console.log(111)
-				if(param.error){console.log(222)
+		MongoClient.connect(config.url, {
+			authSource: "admin",
+			auth: {
+				user: "admin",
+				password: "admin"
+			},
+			useNewUrlParser: true
+		}, function(err, client) {
+			if (err) {
+				if(param.error){
 					param.error(err);
 				}
 				return;
@@ -37,40 +50,5 @@ module.exports = {
 				param.success(coll[param.action](param.param));
 			}
 		});
-	},
-	init () {
-		getDb(function(db) {
-			console.log(db)
-		});
-	},
-	collection (name) {
-		getDb(function(db){
-			table = db.collection(name);
-		});
-		return this;
-	},
-	find (query) {
-		getDb(function(db){
-			table = db.collection(name);
-		});
-
-
-		this.collection(function(collection){
-			collection.find()
-		})
-		table.find(query)
-		return this;
-	},
-	create () {
-		return this;
-	},
-	update () {
-		return this;
-	},
-	delete () {
-		return this;
-	},
-	close () {
-		return this;
 	}
 }

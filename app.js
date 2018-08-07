@@ -39,16 +39,31 @@ const SUCCESS = 1000,
 	ERROR = -1;
 let userList = {};
 
+
+
+// middleware
+io.use((socket, next) => {
+	const query = socket.handshake.query;
+	if (isValid(query)) {
+		return next();
+	}
+	return next(new Error("请提供登录信息"));
+});
+
+function isValid (query) {
+	if((query.id && query.username) && query.id != 'undefined' && query.username != 'undefined'){
+		return true;
+	}else{
+		return false;
+	}
+}
+
+
 io.on('connection', function(socket){
 	const query = socket.handshake.query;
 
-	if(query.username === 'aaasdfsd'){
-		//socket.close();
-		//return;
-	}
-
 	if(query.id && query.username){
-		validate({
+		validateToken({
 			id: query.id,
 			username: query.username
 		}, function(res) {
@@ -106,7 +121,14 @@ io.on('connection', function(socket){
 });
 
 
-function validate (msg, callback) {
+function validateToken (msg, callback) {
+	if(!db.ObjectID.isValid(msg.id)){
+		callback({
+			code: ERROR,
+			message: "用户id错误"
+		});
+		return;
+	}
 	db.execute({
 		collection: "user",
 		action: "find",
