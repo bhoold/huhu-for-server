@@ -1,16 +1,11 @@
 module.exports = {
-    "plugins": [
-        "html"
-    ],
+    "plugins": [],
     "env": {
-        "browser": true,
-        "es6": true
+		"node": true
     },
     "extends": "eslint:recommended",
     "parserOptions": {
-        "ecmaFeatures": {
-            "jsx": true
-        },
+		"ecmaVersion": 8,
         "sourceType": "module"
     },
     "rules": {
@@ -33,12 +28,6 @@ module.exports = {
 		'no-console': 'off'
     },
     "globals": {
-		"global": false,
-		"$": false,
-		"_": false,
-		"Site": false,
-		"module": false,
-		"require": false,
-		"exports": false
+
     }
 };
