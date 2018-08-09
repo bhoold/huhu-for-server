@@ -29,11 +29,12 @@ exports.use = function(req, res, next) {
 		let key = '../controller/' + arr[1];
 		if(!controllers[key]){
 			try{
-				controller[key] = require(key);
+				controllers[key] = require(key);
 			}catch(e) {
 				res.send("no file");
 			}
-		}else{
+		}
+		if(controllers[key]){
 			if(arr[2] === undefined || arr[2] === ""){
 				if(controllers[key].index){
 					controllers[key].index(req, res);

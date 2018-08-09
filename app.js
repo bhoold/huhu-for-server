@@ -1,7 +1,7 @@
 const express = require('express')();
 const http = require('http').Server(express);
 const io = require('socket.io')(http);
-const redis = require('socket.io-redis');
+const redisAdapter = require('socket.io-redis');
 const bodyParser = require('body-parser');
 
 
@@ -45,7 +45,7 @@ const onlineUser = require('./storage/onlineUser');
 const MSGTYPE = require('./config/im/msgtype');
 const NOTIFY = require('./config/im/notify');
 
-const adapter = redis({ host: 'localhost', port: 6379 });
+const adapter = redisAdapter({ host: 'localhost', port: 6379 });
 io.adapter(adapter);
 
 

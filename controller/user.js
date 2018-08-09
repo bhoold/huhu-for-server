@@ -1,5 +1,5 @@
 const db = require('../database');
-const onlineUser = require('./storage/onlineUser');
+const onlineUser = require('../storage/onlineUser');
 
 const SUCCESS = 1000,
 	ERROR = -1;
@@ -28,8 +28,19 @@ module.exports = {
 		});
 	},
 	getState (req, res) {
-		console.log(onlineUser.list())
-		res.send("我是获取状态页");
+		let users = onlineUser.list();
+		let list = [];
+		for(let key in users){
+			list.push({
+				id: key,
+				username: users[key].username
+			})
+		}
+		res.send({
+			code: SUCCESS,
+			message: "查询成功",
+			data: list
+		});
 	},
 	create (req, res) {
 		res.send("我是用户添加页");
