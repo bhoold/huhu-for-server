@@ -20,58 +20,37 @@ module.exports = {
 			return;
 		}
 
-		db.execute({
+		db.find({
 			collection: "user",
-			action: "find",
-			param: {username},
-			success (cursor) {
-				cursor.toArray(function(err, result){
-					if(err){
-						res.send({
-							code: ERROR,
-							message: err.message || "数据库查询失败"
-						});
-						return;
-					}
-					if(result.length){
-						res.send({
-							code: ERROR,
-							message: "已经存在该用户"
-						});
-						return;
-					}
-					db.execute({
-						collection: "user",
-						action: "insert",
-						param: {username, password},
-						success (cursor) {
-							cursor.then(function(result){
-								res.send({
-									code: SUCCESS,
-									message: "注册成功"
-								});
-							}).catch(function(err){
-								res.send({
-									code: ERROR,
-									message: err.message || "注册失败"
-								});
-							});
-						},
-						error (err) {
-							res.send({
-								code: ERROR,
-								message: err.message || "注册失败"
-							});
-						}
-					});
+			query: {username}
+		}).then(data => {
+			if(data.id){
+				res.send({
+					code: ERROR,
+					message: "已经存在该用户"
 				});
-			},
-			error (err) {
+				return;
+			}
+			db.add({
+				collection: "user",
+				query: {username, password}
+			}).then(id => {
+				res.send({
+					code: SUCCESS,
+					message: "注册成功",
+					data: id
+				});
+			}).catch(err => {
 				res.send({
 					code: ERROR,
 					message: err.message || "注册失败"
 				});
-			}
+			});
+		}).catch(err => {
+			res.send({
+				code: ERROR,
+				message: err.message || "注册失败"
+			});
 		});
 	},
 
@@ -95,42 +74,29 @@ module.exports = {
 			});
 			return;
 		}
-		db.execute({
+
+		db.find({
 			collection: "user",
-			action: "find",
-			param: {username, password},
-			success (cursor) {
-				cursor.toArray(function(err, result){
-					if(err){
-						res.send({
-							code: ERROR,
-							message: err.message || "登录失败"
-						});
-						return;
-					}
-					if(result.length){
-						res.send({
-							code: SUCCESS,
-							message: "登录成功",
-							data: {
-								id: result[0]._id.toString(),
-								username: result[0].username
-							}
-						});
-					}else{
-						res.send({
-							code: ERROR,
-							message: "登录失败"
-						});
-					}
+			query: {username, password},
+			fields: ['username']
+		}).then(data => {
+			if(data.id){
+				res.send({
+					code: SUCCESS,
+					message: "登录成功",
+					data: data
 				});
-			},
-			error (err) {
+			}else{
 				res.send({
 					code: ERROR,
-					message: err.message || "登录失败"
+					message: "没有该用户"
 				});
 			}
+		}).catch(err => {
+			res.send({
+				code: ERROR,
+				message: err.message || "登录失败"
+			});
 		});
 
 	}

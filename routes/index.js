@@ -1,29 +1,48 @@
+let controllers = {};
+
+
 exports.use = function(req, res, next) {
 	let arr = req.path.split("/");
 	let controller;
 
 	if(arr[1] === undefined || arr[1] === ""){
-		try{
-			require('../controller/index').index(req, res);
-		}catch(e) {
-			res.send("no file");
+		let key = '../controller/index';
+		if(controllers[key]){
+			if(controllers[key].index){
+				controllers[key].index(req, res);
+			}else{
+				res.send("no index");
+			}			
+		}else{
+			try{
+				controllers[key] = require(key);
+				if(controllers[key].index){
+					controllers[key].index(req, res);
+				}else{
+					res.send("no index");
+				}
+			}catch(e) {
+				res.send("no file");
+			}
 		}
 	}else{
-		try{
-			controller = require('../controller/' + arr[1]);
-		}catch(e) {
-			res.send("no file");
-		}
-		if(controller){
+		let key = '../controller/' + arr[1];
+		if(!controllers[key]){
+			try{
+				controller[key] = require(key);
+			}catch(e) {
+				res.send("no file");
+			}
+		}else{
 			if(arr[2] === undefined || arr[2] === ""){
-				if(controller.index){
-					controller.index(req, res);
+				if(controllers[key].index){
+					controllers[key].index(req, res);
 				}else{
 					res.send("no index");
 				}
 			}else{
-				if(controller[arr[2]]){
-					controller[arr[2]](req, res);
+				if(controllers[key][arr[2]]){
+					controllers[key][arr[2]](req, res);
 				}else{
 					res.send("no action");
 				}
