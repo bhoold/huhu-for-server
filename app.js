@@ -45,9 +45,11 @@ const onlineUser = require('./storage/onlineUser');
 const MSGTYPE = require('./config/im/msgtype');
 const NOTIFY = require('./config/im/notify');
 
-const adapter = redisAdapter({ host: 'localhost', port: 6379 });
+const adapter = redisAdapter({ host: 'localhost', port: 6380, auth_pass: 'abcde' });
 io.adapter(adapter);
-
+io.of('/').adapter.on('error', function(err){
+	console.log(err.message)
+});
 
 
 // middleware

@@ -33,7 +33,8 @@ module.exports = {
 		for(let key in users){
 			list.push({
 				id: key,
-				username: users[key].username
+				username: users[key].username,
+				client: users[key].sockets.length
 			})
 		}
 		res.send({
