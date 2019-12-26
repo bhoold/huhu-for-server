@@ -17,7 +17,8 @@ echo "${serverName} running".PHP_EOL;
     private $port=9501;
     private $mpid=0;
     private $works=[];
-	private $workerNum = 2;
+	private $reactorNum = 2; //æ•°å€¼ä¸cpuæ ¸å¿ƒæ•°é‡ç›¸åŒæˆ–2å€
+	private $workerNum = 2; //æ•°å€¼ä¸cpuæ ¸å¿ƒæ•°é‡ç›¸åŒæˆ–2å€
 
     public function __construct(){
         try {
@@ -28,35 +29,45 @@ echo "${serverName} running".PHP_EOL;
         }
     }
 
+
+
     public function run(){
 		/*
-			$host²ÎÊıÓÃÀ´Ö¸¶¨¼àÌıµÄipµØÖ·£¬Èç127.0.0.1£¬»òÕßÍâÍøµØÖ·£¬»òÕß0.0.0.0¼àÌıÈ«²¿µØÖ·
-				IPv4Ê¹ÓÃ 127.0.0.1±íÊ¾¼àÌı±¾»ú£¬0.0.0.0±íÊ¾¼àÌıËùÓĞµØÖ·
-				IPv6Ê¹ÓÃ::1±íÊ¾¼àÌı±¾»ú£¬:: (Ïàµ±ÓÚ0:0:0:0:0:0:0:0) ±íÊ¾¼àÌıËùÓĞµØÖ·
-			$port¼àÌıµÄ¶Ë¿Ú£¬Èç9501
-				Èç¹û$sock_typeÎªUnixSocket Stream/Dgram£¬´Ë²ÎÊı½«±»ºöÂÔ
-				¼àÌıĞ¡ÓÚ1024¶Ë¿ÚĞèÒªrootÈ¨ÏŞ
-				Èç¹û´Ë¶Ë¿Ú±»Õ¼ÓÃserver->startÊ±»áÊ§°Ü
-			$modeÔËĞĞµÄÄ£Ê½
-				SWOOLE_PROCESS¶à½ø³ÌÄ£Ê½£¨Ä¬ÈÏ£©
-				SWOOLE_BASE»ù±¾Ä£Ê½
-			$sock_typeÖ¸¶¨SocketµÄÀàĞÍ£¬Ö§³ÖTCP¡¢UDP¡¢TCP6¡¢UDP6¡¢UnixSocket Stream/Dgram 6ÖÖ
-			Ê¹ÓÃ$sock_type | SWOOLE_SSL¿ÉÒÔÆôÓÃSSLËíµÀ¼ÓÃÜ¡£ÆôÓÃSSLºó±ØĞëÅäÖÃssl_key_fileºÍssl_cert_file
+			$hostå‚æ•°ç”¨æ¥æŒ‡å®šç›‘å¬çš„ipåœ°å€ï¼Œå¦‚127.0.0.1ï¼Œæˆ–è€…å¤–ç½‘åœ°å€ï¼Œæˆ–è€…0.0.0.0ç›‘å¬å…¨éƒ¨åœ°å€
+				IPv4ä½¿ç”¨ 127.0.0.1è¡¨ç¤ºç›‘å¬æœ¬æœºï¼Œ0.0.0.0è¡¨ç¤ºç›‘å¬æ‰€æœ‰åœ°å€
+				IPv6ä½¿ç”¨::1è¡¨ç¤ºç›‘å¬æœ¬æœºï¼Œ:: (ç›¸å½“äº0:0:0:0:0:0:0:0) è¡¨ç¤ºç›‘å¬æ‰€æœ‰åœ°å€
+			$portç›‘å¬çš„ç«¯å£ï¼Œå¦‚9501
+				å¦‚æœ$sock_typeä¸ºUnixSocket Stream/Dgramï¼Œæ­¤å‚æ•°å°†è¢«å¿½ç•¥
+				ç›‘å¬å°äº1024ç«¯å£éœ€è¦rootæƒé™
+				å¦‚æœæ­¤ç«¯å£è¢«å ç”¨server->startæ—¶ä¼šå¤±è´¥
+			$modeè¿è¡Œçš„æ¨¡å¼
+				SWOOLE_PROCESSå¤šè¿›ç¨‹æ¨¡å¼ï¼ˆé»˜è®¤ï¼‰
+				SWOOLE_BASEåŸºæœ¬æ¨¡å¼
+			$sock_typeæŒ‡å®šSocketçš„ç±»å‹ï¼Œæ”¯æŒTCPã€UDPã€TCP6ã€UDP6ã€UnixSocket Stream/Dgram 6ç§
+			ä½¿ç”¨$sock_type | SWOOLE_SSLå¯ä»¥å¯ç”¨SSLéš§é“åŠ å¯†ã€‚å¯ç”¨SSLåå¿…é¡»é…ç½®ssl_key_fileå’Œssl_cert_file
 			
-			1.7.11°æ±¾Ôö¼ÓÁË¶ÔUnix SocketµÄÖ§³Ö£¬ÏêÏ¸Çë²Î¼û /wiki/page/16.html
-			¹¹Ôìº¯ÊıÖĞµÄ²ÎÊıÓëswoole_server::addlistenerÖĞÊÇÍêÈ«ÏàÍ¬µÄ
-			¸ß¸ºÔØµÄ·şÎñÆ÷£¬ÇëÎñ±Øµ÷ÕûLinuxÄÚºË²ÎÊı
-			1.9.6Ôö¼ÓÁËËæ»ú¼àÌı¿ÉÓÃ¶Ë¿ÚµÄÖ§³Ö£¬$port²ÎÊı¿ÉÒÔÉèÖÃÎª0£¬²Ù×÷ÏµÍ³»áËæ»ú·ÖÅäÒ»¸ö¿ÉÓÃµÄ¶Ë¿Ú£¬½øĞĞ¼àÌı¡£¿ÉÒÔÍ¨¹ı¶ÁÈ¡$server->portµÃµ½·ÖÅäµ½µÄ¶Ë¿ÚºÅ¡£
-			1.9.7Ôö¼ÓÁË¶Ôsystemd socketµÄÖ§³Ö¡£¼àÌı¶Ë¿ÚÓÉsystemdÅäÖÃÖ¸¶¨
+			1.7.11ç‰ˆæœ¬å¢åŠ äº†å¯¹Unix Socketçš„æ”¯æŒï¼Œè¯¦ç»†è¯·å‚è§ /wiki/page/16.html
+			æ„é€ å‡½æ•°ä¸­çš„å‚æ•°ä¸swoole_server::addlistenerä¸­æ˜¯å®Œå…¨ç›¸åŒçš„
+			é«˜è´Ÿè½½çš„æœåŠ¡å™¨ï¼Œè¯·åŠ¡å¿…è°ƒæ•´Linuxå†…æ ¸å‚æ•°
+			1.9.6å¢åŠ äº†éšæœºç›‘å¬å¯ç”¨ç«¯å£çš„æ”¯æŒï¼Œ$portå‚æ•°å¯ä»¥è®¾ç½®ä¸º0ï¼Œæ“ä½œç³»ç»Ÿä¼šéšæœºåˆ†é…ä¸€ä¸ªå¯ç”¨çš„ç«¯å£ï¼Œè¿›è¡Œç›‘å¬ã€‚å¯ä»¥é€šè¿‡è¯»å–$server->portå¾—åˆ°åˆ†é…åˆ°çš„ç«¯å£å·ã€‚
+			1.9.7å¢åŠ äº†å¯¹systemd socketçš„æ”¯æŒã€‚ç›‘å¬ç«¯å£ç”±systemdé…ç½®æŒ‡å®š
 		*/
 
 		$serv = new Swoole\Server($this->localhost, $this->port /*, $mode, $sock_type*/);
 		$serv->set(array(
-			'worker_num' => $this->workerNum
+			'reactor_num' => $this->reactorNum,
+			'worker_num' => $this->workerNum,
+			'package_eof' => "\r\n\r\n",  //httpåè®®å°±æ˜¯ä»¥\r\n\r\nä½œä¸ºç»“æŸç¬¦çš„ï¼Œè¿™é‡Œä¹Ÿå¯ä»¥ä½¿ç”¨äºŒè¿›åˆ¶å†…å®¹
+			'open_eof_check' => 1,
 		));
 
 		$serv->on('start', array($this, 'onStart'));
+		$serv->on('managerStart', array($this, 'onManagerStart'));
 		$serv->on('workerStart', array($this, 'onWorkerStart'));
+		$serv->on('connect', array($this, 'onConnect'));
+		$serv->on('close', array($this, 'onClose'));
+		$serv->on('receive', array($this, 'onReceive'));
+		$serv->on('workerError', array($this, 'onWorkerError'));
 
 
 		if($serv->start()) {
@@ -64,57 +75,134 @@ echo "${serverName} running".PHP_EOL;
 		}
     }
 
-	
+
+
 	public function onStart($serv) {
 		/*
-			ÔÚ´ËÊÂ¼şÖ®Ç°ServerÒÑ½øĞĞÁËÈçÏÂ²Ù×÷
+			åœ¨æ­¤äº‹ä»¶ä¹‹å‰Serverå·²è¿›è¡Œäº†å¦‚ä¸‹æ“ä½œ
 
-				ÒÑ´´½¨ÁËmanager½ø³Ì
-				ÒÑ´´½¨ÁËworker×Ó½ø³Ì
-				ÒÑ¼àÌıËùÓĞTCP/UDP/UnixSocket¶Ë¿Ú£¬µ«Î´¿ªÊ¼AcceptÁ¬½ÓºÍÇëÇó
-				ÒÑ¼àÌıÁË¶¨Ê±Æ÷
-			½ÓÏÂÀ´ÒªÖ´ĞĞ
+				å·²åˆ›å»ºäº†managerè¿›ç¨‹
+				å·²åˆ›å»ºäº†workerå­è¿›ç¨‹
+				å·²ç›‘å¬æ‰€æœ‰TCP/UDP/UnixSocketç«¯å£ï¼Œä½†æœªå¼€å§‹Acceptè¿æ¥å’Œè¯·æ±‚
+				å·²ç›‘å¬äº†å®šæ—¶å™¨
+			æ¥ä¸‹æ¥è¦æ‰§è¡Œ
 
-				Ö÷Reactor¿ªÊ¼½ÓÊÕÊÂ¼ş£¬¿Í»§¶Ë¿ÉÒÔconnectµ½Server
-			onStart»Øµ÷ÖĞ£¬½öÔÊĞíecho¡¢´òÓ¡Log¡¢ĞŞ¸Ä½ø³ÌÃû³Æ¡£²»µÃÖ´ĞĞÆäËû²Ù×÷¡£onWorkerStartºÍonStart»Øµ÷ÊÇÔÚ²»Í¬½ø³ÌÖĞ²¢ĞĞÖ´ĞĞµÄ£¬²»´æÔÚÏÈºóË³Ğò¡£
+				ä¸»Reactorå¼€å§‹æ¥æ”¶äº‹ä»¶ï¼Œå®¢æˆ·ç«¯å¯ä»¥connectåˆ°Server
+			onStartå›è°ƒä¸­ï¼Œä»…å…è®¸echoã€æ‰“å°Logã€ä¿®æ”¹è¿›ç¨‹åç§°ã€‚ä¸å¾—æ‰§è¡Œå…¶ä»–æ“ä½œã€‚onWorkerStartå’ŒonStartå›è°ƒæ˜¯åœ¨ä¸åŒè¿›ç¨‹ä¸­å¹¶è¡Œæ‰§è¡Œçš„ï¼Œä¸å­˜åœ¨å…ˆåé¡ºåºã€‚
 
-			¿ÉÒÔÔÚonStart»Øµ÷ÖĞ£¬½«$serv->master_pidºÍ$serv->manager_pidµÄÖµ±£´æµ½Ò»¸öÎÄ¼şÖĞ¡£ÕâÑù¿ÉÒÔ±àĞ´½Å±¾£¬ÏòÕâÁ½¸öPID·¢ËÍĞÅºÅÀ´ÊµÏÖ¹Ø±ÕºÍÖØÆôµÄ²Ù×÷¡£
+			å¯ä»¥åœ¨onStartå›è°ƒä¸­ï¼Œå°†$serv->master_pidå’Œ$serv->manager_pidçš„å€¼ä¿å­˜åˆ°ä¸€ä¸ªæ–‡ä»¶ä¸­ã€‚è¿™æ ·å¯ä»¥ç¼–å†™è„šæœ¬ï¼Œå‘è¿™ä¸¤ä¸ªPIDå‘é€ä¿¡å·æ¥å®ç°å…³é—­å’Œé‡å¯çš„æ“ä½œã€‚
 
-			onStartÊÂ¼şÔÚMaster½ø³ÌµÄÖ÷Ïß³ÌÖĞ±»µ÷ÓÃ¡£
-			BASEÄ£Ê½ÏÂÃ»ÓĞmaster½ø³Ì£¬Òò´Ë²»´æÔÚonStartÊÂ¼ş¡£Çë²»ÒªÔÚBASEÄ£Ê½ÖĞÊ¹ÓÃÊ¹ÓÃonStart»Øµ÷º¯Êı¡£
+			onStartäº‹ä»¶åœ¨Masterè¿›ç¨‹çš„ä¸»çº¿ç¨‹ä¸­è¢«è°ƒç”¨ã€‚
+			BASEæ¨¡å¼ä¸‹æ²¡æœ‰masterè¿›ç¨‹ï¼Œå› æ­¤ä¸å­˜åœ¨onStartäº‹ä»¶ã€‚è¯·ä¸è¦åœ¨BASEæ¨¡å¼ä¸­ä½¿ç”¨ä½¿ç”¨onStartå›è°ƒå‡½æ•°ã€‚
 		*/
 
 		echo "Server: started\n";
+		echo "Server master pid: ".$serv->master_pid.PHP_EOL;
+		echo "Server manager pid: ".$serv->manager_pid.PHP_EOL;
+	}
+
+
+
+	public function onManagerStart($serv) {
+		/*
+			managerè¿›ç¨‹ä¸­å¯ä»¥è°ƒç”¨sendMessageæ¥å£å‘å…¶ä»–å·¥ä½œè¿›ç¨‹å‘é€æ¶ˆæ¯
+			onManagerStartè§¦å‘æ—¶ï¼Œè¯´æ˜ï¼š
+			Taskå’ŒWorkerè¿›ç¨‹å·²åˆ›å»º
+			Masterè¿›ç¨‹çŠ¶æ€ä¸æ˜ï¼Œå› ä¸ºManagerä¸Masteræ˜¯å¹¶è¡Œçš„ï¼ŒonManagerStartå›è°ƒå‘ç”Ÿæ˜¯ä¸èƒ½ç¡®å®šMasterè¿›ç¨‹æ˜¯å¦å·²å°±ç»ª
+		*/
+		
+		swoole_set_process_name(sprintf('huhu-tcp-server:%s', 'manager_'.$worker_id));
 	}
 
 
 
 	public function onWorkerStart($serv, $worker_id) {
 		/*
-			´ËÊÂ¼şÔÚWorker½ø³Ì/Task½ø³ÌÆô¶¯Ê±·¢Éú¡£ÕâÀï´´½¨µÄ¶ÔÏó¿ÉÒÔÔÚ½ø³ÌÉúÃüÖÜÆÚÄÚÊ¹ÓÃ
+			æ­¤äº‹ä»¶åœ¨Workerè¿›ç¨‹/Taskè¿›ç¨‹å¯åŠ¨æ—¶å‘ç”Ÿã€‚è¿™é‡Œåˆ›å»ºçš„å¯¹è±¡å¯ä»¥åœ¨è¿›ç¨‹ç”Ÿå‘½å‘¨æœŸå†…ä½¿ç”¨
 
-			onWorkerStart/onStartÊÇ²¢·¢Ö´ĞĞµÄ£¬Ã»ÓĞÏÈºóË³Ğò
-			¿ÉÒÔÍ¨¹ı$server->taskworkerÊôĞÔÀ´ÅĞ¶Ïµ±Ç°ÊÇWorker½ø³Ì»¹ÊÇTask½ø³Ì
-			ÉèÖÃÁËworker_numºÍtask_worker_num³¬¹ı1Ê±£¬Ã¿¸ö½ø³Ì¶¼»á´¥·¢Ò»´ÎonWorkerStartÊÂ¼ş£¬¿ÉÍ¨¹ıÅĞ¶Ï$worker_idÇø·Ö²»Í¬µÄ¹¤×÷½ø³Ì
-			ÓÉ worker ½ø³ÌÏò task ½ø³Ì·¢ËÍÈÎÎñ£¬task ½ø³Ì´¦ÀíÍêÈ«²¿ÈÎÎñÖ®ºóÍ¨¹ıonFinish»Øµ÷º¯ÊıÍ¨Öª worker ½ø³Ì¡£ÀıÈç£¬ÎÒÃÇÔÚºóÌ¨²Ù×÷ÏòÊ®Íò¸öÓÃ»§Èº·¢Í¨ÖªÓÊ¼ş£¬²Ù×÷Íê³Éºó²Ù×÷µÄ×´Ì¬ÏÔÊ¾Îª·¢ËÍÖĞ£¬ÕâÊ±ÎÒÃÇ¿ÉÒÔ¼ÌĞøÆäËû²Ù×÷¡£µÈÓÊ¼şÈº·¢Íê±Ïºó£¬²Ù×÷µÄ×´Ì¬×Ô¶¯¸ÄÎªÒÑ·¢ËÍ¡£
+			onWorkerStart/onStartæ˜¯å¹¶å‘æ‰§è¡Œçš„ï¼Œæ²¡æœ‰å…ˆåé¡ºåº
+			å¯ä»¥é€šè¿‡$server->taskworkerå±æ€§æ¥åˆ¤æ–­å½“å‰æ˜¯Workerè¿›ç¨‹è¿˜æ˜¯Taskè¿›ç¨‹
+			è®¾ç½®äº†worker_numå’Œtask_worker_numè¶…è¿‡1æ—¶ï¼Œæ¯ä¸ªè¿›ç¨‹éƒ½ä¼šè§¦å‘ä¸€æ¬¡onWorkerStartäº‹ä»¶ï¼Œå¯é€šè¿‡åˆ¤æ–­$worker_idåŒºåˆ†ä¸åŒçš„å·¥ä½œè¿›ç¨‹
+			ç”± worker è¿›ç¨‹å‘ task è¿›ç¨‹å‘é€ä»»åŠ¡ï¼Œtask è¿›ç¨‹å¤„ç†å®Œå…¨éƒ¨ä»»åŠ¡ä¹‹åé€šè¿‡onFinishå›è°ƒå‡½æ•°é€šçŸ¥ worker è¿›ç¨‹ã€‚ä¾‹å¦‚ï¼Œæˆ‘ä»¬åœ¨åå°æ“ä½œå‘åä¸‡ä¸ªç”¨æˆ·ç¾¤å‘é€šçŸ¥é‚®ä»¶ï¼Œæ“ä½œå®Œæˆåæ“ä½œçš„çŠ¶æ€æ˜¾ç¤ºä¸ºå‘é€ä¸­ï¼Œè¿™æ—¶æˆ‘ä»¬å¯ä»¥ç»§ç»­å…¶ä»–æ“ä½œã€‚ç­‰é‚®ä»¶ç¾¤å‘å®Œæ¯•åï¼Œæ“ä½œçš„çŠ¶æ€è‡ªåŠ¨æ”¹ä¸ºå·²å‘é€ã€‚
 
-			$worker_idÊÇÒ»¸ö´Ó[0-$worker_num)Çø¼äÄÚµÄÊı×Ö£¬±íÊ¾Õâ¸öWorker½ø³ÌµÄID
-			$worker_idºÍ½ø³ÌPIDÃ»ÓĞÈÎºÎ¹ØÏµ£¬¿ÉÊ¹ÓÃposix_getpidº¯Êı»ñÈ¡PID
-			2.1.0°æ±¾onWorkerStart»Øµ÷º¯ÊıÖĞ´´½¨ÁËĞ­³Ì£¬ÔÚonWorkerStart¿ÉÒÔµ÷ÓÃĞ­³ÌAPI
-
+			$worker_idæ˜¯ä¸€ä¸ªä»[0-$worker_num)åŒºé—´å†…çš„æ•°å­—ï¼Œè¡¨ç¤ºè¿™ä¸ªWorkerè¿›ç¨‹çš„ID
+			$worker_idå’Œè¿›ç¨‹PIDæ²¡æœ‰ä»»ä½•å…³ç³»ï¼Œå¯ä½¿ç”¨posix_getpidå‡½æ•°è·å–PID
+			2.1.0ç‰ˆæœ¬onWorkerStartå›è°ƒå‡½æ•°ä¸­åˆ›å»ºäº†åç¨‹ï¼Œåœ¨onWorkerStartå¯ä»¥è°ƒç”¨åç¨‹API
 		*/
-		
-		swoole_set_process_name(sprintf('huhu-tcp-server:%s', 'worker_'.$worker_id));
 
-		echo "Server: workerStart\n";
+		swoole_set_process_name(sprintf('huhu-tcp-server:%s', ($server->taskworker?'task_':'worker_').$worker_id));
+		
+		echo "Server worker_${worker_id} pid: ".$serv->worker_pid.PHP_EOL;
 	}
 
 
 
+	public function onConnect($serv, $fd, $reactor_id) {
+		/*
+			workerè¿›ç¨‹å›è°ƒ
+		*/
+
+		
+
+		if(count($serv->connections) > 500) {
+			$serv->close($fd, true);
+		}
+
+		$clinfo = $serv->getClientInfo($fd);
+		
+		echo sprintf("ç”¨æˆ·ç«¯è¿æ¥%s:%s å½“å‰æœåŠ¡å™¨å…±æœ‰ %s ä¸ªè¿æ¥\n", $clinfo['remote_ip'], $clinfo['remote_port'], count($serv->connections));
+	}
 
 
 
+	public function onClose($serv, $fd, $reactor_id) {
+		/*
+			onClose å›è°ƒå‡½æ•°å¦‚æœå‘ç”Ÿäº†è‡´å‘½é”™è¯¯ï¼Œä¼šå¯¼è‡´è¿æ¥æ³„æ¼ã€‚é€šè¿‡ netstat å‘½ä»¤ä¼šçœ‹åˆ°å¤§é‡ CLOSE_WAIT çŠ¶æ€çš„ TCP è¿æ¥
+			onCloseä¸­ä¾ç„¶å¯ä»¥è°ƒç”¨getClientInfoæ–¹æ³•è·å–åˆ°è¿æ¥ä¿¡æ¯ï¼Œåœ¨onCloseå›è°ƒå‡½æ•°æ‰§è¡Œå®Œæ¯•åæ‰ä¼šè°ƒç”¨closeå…³é—­TCPè¿æ¥
+			å½“æœåŠ¡å™¨ä¸»åŠ¨å…³é—­è¿æ¥æ—¶ï¼Œåº•å±‚ä¼šè®¾ç½®æ­¤å‚æ•°ä¸º-1ï¼Œå¯ä»¥é€šè¿‡åˆ¤æ–­$reactor_id < 0æ¥åˆ†è¾¨å…³é—­æ˜¯ç”±æœåŠ¡å™¨ç«¯è¿˜æ˜¯å®¢æˆ·ç«¯å‘èµ·çš„ã€‚
+			åªæœ‰åœ¨PHPä»£ç ä¸­ä¸»åŠ¨è°ƒç”¨closeæ–¹æ³•è¢«è§†ä¸ºä¸»åŠ¨å…³é—­
+		*/
 
+		$clinfo = $serv->getClientInfo($fd);
+
+		$name = "ç”¨æˆ·";
+		if($reactor_id < 0) {
+			$name = "æœåŠ¡";
+		}
+		echo sprintf("%sç«¯æ­£åœ¨å…³é—­%s:%s å½“å‰æœåŠ¡å™¨å…±æœ‰ %s ä¸ªè¿æ¥\n", $name, $clinfo['remote_ip'], $clinfo['remote_port'], count($serv->connections));
+
+
+	}
+
+
+
+	public function onReceive($serv, $fd, $reactor_id, $data) {
+		/*
+			udpåè®®åªæœ‰onReceiveäº‹ä»¶
+			åœ¨1.7.15ä»¥ä¸Šç‰ˆæœ¬ä¸­ï¼Œå½“è®¾ç½®dispatch_mode = 1/3æ—¶ä¼šè‡ªåŠ¨å»æ‰onConnect/onCloseäº‹ä»¶å›è°ƒ
+		*/
+
+		$timerId = $serv->tick(1000, function() use ($serv, $fd) {
+			if($serv->exist($fd))
+				$serv->send($fd, "hello world\n");
+			else
+				Swoole\Timer::clear($timerId);
+		});
+	}
+
+
+
+	public function onWorkerError($serv, $worker_id, $worker_pid, $exit_code, $signal) {
+		/*
+			signal = 11ï¼šè¯´æ˜Workerè¿›ç¨‹å‘ç”Ÿäº†segment faultæ®µé”™è¯¯ï¼Œå¯èƒ½è§¦å‘äº†åº•å±‚çš„BUGï¼Œè¯·æ”¶é›†core dumpä¿¡æ¯å’Œvalgrindå†…å­˜æ£€æµ‹æ—¥å¿—ï¼Œå‘æˆ‘ä»¬åé¦ˆæ­¤é—®é¢˜
+			exit_code = 255ï¼šè¯´æ˜Workerè¿›ç¨‹å‘ç”Ÿäº†Fatal Errorè‡´å‘½é”™è¯¯ï¼Œè¯·æ£€æŸ¥PHPçš„é”™è¯¯æ—¥å¿—ï¼Œæ‰¾åˆ°å­˜åœ¨é—®é¢˜çš„PHPä»£ç ï¼Œè¿›è¡Œè§£å†³
+			signal = 9ï¼šè¯´æ˜Workerè¢«ç³»ç»Ÿå¼ºè¡ŒKillï¼Œè¯·æ£€æŸ¥æ˜¯å¦æœ‰äººä¸ºçš„kill -9æ“ä½œï¼Œæ£€æŸ¥dmesgä¿¡æ¯ä¸­æ˜¯å¦å­˜åœ¨OOMï¼ˆOut of memoryï¼‰
+			å¦‚æœå­˜åœ¨OOMï¼Œåˆ†é…äº†è¿‡å¤§çš„å†…å­˜ã€‚æ£€æŸ¥Serverçš„settingé…ç½®ï¼Œæ˜¯å¦åˆ›å»ºäº†éå¸¸å¤§çš„Swoole\Tableã€Swoole\Bufferç­‰å†…å­˜æ¨¡å—
+		*/
+
+		echo sprintf("$worker_id:%s $worker_pid:%s $exit_code:%s $signal:%s\n", $worker_id, $worker_pid, $exit_code, $signal);
+
+	}
 
 
 
