@@ -1,26 +1,26 @@
 <?php
 
-$serverName = sprintf('huhu-tcp-server:%s', 'master');
-swoole_set_process_name($serverName);
-
-echo sprintf("swoole version: %s".PHP_EOL, SWOOLE_VERSION);
-echo sprintf("cpu num: %s".PHP_EOL, swoole_cpu_num());
-echo sprintf("ip: %s".PHP_EOL, implode(',', swoole_get_local_ip()));
-echo sprintf("mac: %s".PHP_EOL, implode(', ', swoole_get_local_mac()));
-echo "${serverName} running".PHP_EOL;
-
-
-
-
 (new class{
-    private $localhost="127.0.0.1";
-    private $port=9501;
-    private $mpid=0;
-    private $works=[];
+    private $localhost = "127.0.0.1";
+    private $port = 9501;
+    private $mpid = 0;
+    private $works = [];
 	private $reactorNum = 2; //数值与cpu核心数量相同或2倍
 	private $workerNum = 2; //数值与cpu核心数量相同或2倍
 
     public function __construct(){
+
+
+		$serverName = sprintf('huhu-tcp-server:%s', 'master');
+		swoole_set_process_name($serverName);
+		
+		echo sprintf("swoole version: %s".PHP_EOL, SWOOLE_VERSION);
+		echo sprintf("cpu num: %s".PHP_EOL, swoole_cpu_num());
+		echo sprintf("ip: %s".PHP_EOL, implode(',', swoole_get_local_ip()));
+		echo sprintf("mac: %s".PHP_EOL, implode(', ', swoole_get_local_mac()));
+		echo "${serverName} running".PHP_EOL;
+
+
         try {
             $this->mpid = posix_getpid();
             $this->run();
