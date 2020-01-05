@@ -1,7 +1,7 @@
 <?php
 
 (new class{
-    private $localhost = "127.0.0.1";
+    private $localhost = "172.18.18.210";
     private $port = 9501;
     private $mpid = 0;
     private $works = [];
@@ -57,8 +57,10 @@
 		$serv->set(array(
 			'reactor_num' => $this->reactorNum,
 			'worker_num' => $this->workerNum,
-			'package_eof' => "\r\n\r\n",  //http协议就是以\r\n\r\n作为结束符的，这里也可以使用二进制内容
-			'open_eof_check' => 1,
+
+			//package_eof设置有\n导致mfc客户端解析不完整
+			//'package_eof' => "\r\n\r\n",  //http协议就是以\r\n\r\n作为结束符的，这里也可以使用二进制内容
+			//'open_eof_check' => 1,
 		));
 
 		$serv->on('start', array($this, 'onStart'));
@@ -181,15 +183,19 @@
 			udp协议只有onReceive事件
 			在1.7.15以上版本中，当设置dispatch_mode = 1/3时会自动去掉onConnect/onClose事件回调
 		*/
-
+		$serv->send($fd, iconv('UTF-8', 'UCS-2', "S速度woole: ").$data);
+		echo iconv('UCS-2', 'UTF-8', $data);
+		echo "\n";
+		/*
+		echo $data;echo "\r\n";
 		$timerId = $serv->tick(1000, function() use ($serv, $fd) {
 			if($serv->exist($fd))
 				$serv->send($fd, "hello world\n");
 			else
 				Swoole\Timer::clear($timerId);
 		});
+		*/
 	}
-
 
 
 	public function onWorkerError($serv, $worker_id, $worker_pid, $exit_code, $signal) {
