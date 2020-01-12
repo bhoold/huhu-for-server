@@ -1,7 +1,8 @@
 <?php
+// 注意：确保客户端使用unicode字符集utf-8编码通信
 
 (new class{
-    private $localhost = "172.18.18.210";
+    private $localhost = "0.0.0.0";
     private $port = 9501;
     private $mpid = 0;
     private $works = [];
@@ -61,6 +62,7 @@
 			//package_eof设置有\n导致mfc客户端解析不完整
 			//'package_eof' => "\r\n\r\n",  //http协议就是以\r\n\r\n作为结束符的，这里也可以使用二进制内容
 			//'open_eof_check' => 1,
+			//'daemonize' => true, //守护进程
 		));
 
 		$serv->on('start', array($this, 'onStart'));
@@ -144,8 +146,6 @@
 			worker进程回调
 		*/
 
-		
-
 		if(count($serv->connections) > 500) {
 			$serv->close($fd, true);
 		}
@@ -183,8 +183,8 @@
 			udp协议只有onReceive事件
 			在1.7.15以上版本中，当设置dispatch_mode = 1/3时会自动去掉onConnect/onClose事件回调
 		*/
-		$serv->send($fd, iconv('UTF-8', 'UCS-2', "S速度woole: ").$data);
-		echo iconv('UCS-2', 'UTF-8', $data);
+		$serv->send($fd, $data);
+		echo $data;
 		echo "\n";
 		/*
 		echo $data;echo "\r\n";
