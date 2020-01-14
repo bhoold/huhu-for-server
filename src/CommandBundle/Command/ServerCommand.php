@@ -8,6 +8,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 
 use App\Controller\LuckyController;
+use App\Controller\UserController;
+
 
 use Swoole\Coroutine as Co;
 use Swoole\Coroutine\Channel as Chan;
@@ -88,9 +90,64 @@ class ServerCommand extends Command
                             
                             switch($msgReq["type"]) {
                                 case "register":
-                                    go(function($account, $password, $repassword) {
-                                        echo "注册了${account}, ${password}, ${repassword}";
-                                    }, $msgReq["account"], $msgReq["password"], $msgReq["repassword"]);
+                                    echo "连接数据库...";
+
+                                    $host = '172.18.18.222';
+                                    $port = '3306';
+                                    $user = 'root';
+                                    $password = '123456';
+                                    $db = 'huhuim';
+
+                                    $link = mysqli_connect($host.':'.$port, $user, $password, $db);
+                                    if (!$link) {
+                                        die('mysqli_connect Connect Error (' . mysqli_connect_errno() . ') '
+                                                . mysqli_connect_error());
+                                    }
+                                    echo 'mysqli_connect Success... ' . mysqli_get_host_info($link) . "\n";
+                                    mysqli_close($link);
+                                    /*
+                                    $swoole_mysql = new Co\MySQL();
+                                    if(true === $swoole_mysql->connect([
+                                        'host' => '172.18.18.222',
+                                        'port' => 3306,
+                                        'user' => 'root',
+                                        'password' => '123456',
+                                        'database' => 'sys',
+                                        'timeout' => 5
+                                    ])) {
+                                        echo "数据库连接成功\n";
+                                        $res = $swoole_mysql->query('select * from sys_config');
+                                        if($res === false) {
+                                            return;
+                                        }
+                                        foreach ($res as $value) {
+                                            print_r($value);
+                                        }
+                                    } else {
+                                        echo "数据库连接失败\n";
+                                    }
+                                    */
+
+
+
+
+                                    $chan = new Chan();
+                                    go(function($arrForm, $chan) use ($output) {
+                                        $controller = new UserController();
+                                        $msg = $controller->index();
+                                        if(false === $result = $chan->push($msg)) {
+                                            $output->writeln("<comment>register::chan->push失败</comment>");
+                                        }
+                                    }, array(
+                                        "account" => $msgReq["account"],
+                                        "password" => $msgReq["password"], 
+                                        "repassword" => $msgReq["repassword"]
+                                    ), $chan);
+                                    if(false !== $result = $chan->pop()) {
+                                        echo $result;
+                                    } else {
+                                        $output->writeln("<comment>register::chan->pop失败</comment>");
+                                    }
                                 break;
                                 case "login":
 

@@ -14,7 +14,15 @@ $client = new Swoole\Client(SWOOLE_SOCK_TCP);
 if (!$client->connect('127.0.0.1', 9601, -1)) {
     exit("connect failed. Error: {$client->errCode}\n");
 }
-$client->send("{\"msgid\":\"111\",\"type\":\"register\",\"account\":\"myname\",\"password\":\"123456\",\"repassword\":\"123456\"}");
+
+$message = array(
+	"msgid" => "123",
+	"type" => "register",
+	"account" => "myname",
+	"password" => "123456",
+	"repassword" => "123456"
+);
+$client->send(json_encode($message));
 echo $client->recv();
 $client->close();
 
