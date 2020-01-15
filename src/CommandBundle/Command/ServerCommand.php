@@ -3,7 +3,7 @@
  * @Author: Raven 
  * @Date: 2020-01-15 19:31:25 
  * @Last Modified by: Raven
- * @Last Modified time: 2020-01-15 22:37:54
+ * @Last Modified time: 2020-01-16 00:43:19
  */
 
 namespace App\CommandBundle\Command;
@@ -51,7 +51,7 @@ class ServerCommand extends Command
     {
         $host = $_ENV['TCP_SERVER_HOST'];
         $port = $_ENV['TCP_SERVER_PORT'];
-        $daemonize = (bool)$_ENV['TCP_SERVER_DAEMONIZE'];
+        $daemonize = $_ENV['TCP_SERVER_DAEMONIZE'];
         $logfile = $_ENV['TCP_SERVER_LOGFILE'];
         if($logfile[0] !== '/') {
             $logfile = $_ENV['PWD'].DIRECTORY_SEPARATOR.$logfile;

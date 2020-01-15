@@ -3,20 +3,18 @@
  * @Author: Raven 
  * @Date: 2020-01-15 19:30:53 
  * @Last Modified by: Raven
- * @Last Modified time: 2020-01-15 23:42:42
+ * @Last Modified time: 2020-01-16 02:19:26
  */
 declare(strict_types = 1);
 
 namespace App\SwooleBundle\Server;
 
+use Swoole\Server;
 use Swoole\Coroutine as Co;
-use Swoole\Coroutine\Channel as Chan;
-use Swoole\Coroutine\Server;
-use Swoole\Coroutine\Server\Connection;
 
 use App\SwooleBundle\User;
 use App\SwooleBundle\Error;
-
+use App\SwooleBundle\Server\Event;
 
 /**
  * swoole tcp服务模块
@@ -29,6 +27,13 @@ class TcpServer
      * @var string
      */
     private $processName;
+
+    /**
+     * 进程id
+     *
+     * @var int
+     */
+    private $mpid;
 
     /**
      * 服务ip
@@ -61,9 +66,9 @@ class TcpServer
     /**
      * 是否守护进程
      *
-     * @var boolean
+     * @var int
      */
-    private $daemonize = false;
+    private $daemonize = 0;
 
     /**
      * 日志文件,在$daemonize为true时使用
@@ -107,13 +112,15 @@ class TcpServer
      * @param string $host
      * @param integer $port
      */
-    private function __construct(string $host, int $port, bool $daemonize, string $logfile)
+    private function __construct(string $host, int $port, int $daemonize, string $logfile)
     {
         $this->processName = sprintf('huhu-tcp-server:%s', 'master');
         $this->host = $host;
         $this->port = $port;
         $this->daemonize = $daemonize;
         $this->logfile = $logfile;
+
+        $this->mpid = posix_getpid();
         
         $this->serverInfo = [
             'swoole_ver' => SWOOLE_VERSION,
@@ -130,7 +137,7 @@ class TcpServer
      * @param integer $port
      * @return boolean
      */
-    public static function start(string $host, int $port, bool $daemonize, string $logfile): bool
+    public static function start(string $host, int $port, int $daemonize, string $logfile): bool
     {
         if(!(self::$instance instanceof self)){
             self::$instance = new self($host, $port, $daemonize, $logfile);
@@ -143,9 +150,22 @@ class TcpServer
 
         swoole_set_process_name($instc->processName);
 
+        //return $instc->goServ();
+        return $instc->asyncServ();
+    }
+
+    /**
+     * 协程方式
+     *
+     * @return boolean
+     */
+    private function goServ(): boolean
+    {
+        $instc = self::$instance;
+
         $scheduler = new Co\Scheduler;
         $scheduler->add(function () use($instc) {
-            $serv = new Server($instc->host, $instc->port, $instc->ssl, $instc->reuse_port);
+            $serv = new Co\Server($instc->host, $instc->port, $instc->ssl, $instc->reuse_port);
             $serv->set(array(
                 'reactor_num' => 2, //数值与cpu核心数量相同或2倍
                 'worker_num' => 2, //数值与cpu核心数量相同或2倍
@@ -154,11 +174,9 @@ class TcpServer
                 'daemonize' => $instc->daemonize, //守护进程
                 'log_file' => $instc->logfile
             ));
-            echo 'tcpserver test: ';
-            var_dump($instc->daemonize);
-            $serv->handle(function (Connection $conn) {
-                while('' !== $message = $conn->recv()) {
-                    $msgReq = json_decode($message, true);
+            $serv->handle(function (Co\Server\Connection $conn) {
+                while('' !== $data = $conn->recv()) {
+                    $msgReq = json_decode($data, true);
                     if(is_array($msgReq) && isset($msgReq['msgid']) && isset($msgReq['type'])) {
                         
                         switch($msgReq['type']) {
@@ -171,9 +189,9 @@ class TcpServer
                                     'repassword' => $msgReq["repassword"]
                                 ];
                                 if(true === $error = User::register($form)) {
-                                    echo 'register注册成功';
+                                    echo 'register注册成功'.PHP_EOL;
                                 } else {
-                                    echo 'register注册失败 ['.$error['number'].']: '.$error['desc'];
+                                    echo 'register注册失败 ['.$error['number'].']: '.$error['desc'].PHP_EOL;
                                 }
 
 
@@ -225,7 +243,7 @@ class TcpServer
 
                                 /*
 
-                                $chan = new Chan();
+                                $chan = new Co\Channel();
                                 go(function($arrForm, $chan) use ($output) {
                                     $msg = "sdfe";
                                     if(false === $result = $chan->push($msg)) {
@@ -262,15 +280,133 @@ class TcpServer
                     }
                 }
             });
-            $serv->start();// start后会阻塞
+            if(false === $serv->start()) { //此代码没有场景验证
+                //$serv->errCode
+                $instc->error = Error::$start_fail;
+                throw new Exception($serv->errCode.Error::$start_fail['desc']);
+            }
         });
 
 		if(false === $scheduler->start()) {
             $instc->error = Error::$scheduler_fail;
             return false;
         }
-        
         return true;
+    }
+
+    /**
+     * 异步方式
+     *
+     * @return boolean
+     */
+    private function asyncServ(): boolean
+    {
+        $instc = self::$instance;
+        
+        $serv = new Server($instc->host, $instc->port/*, $mode, $sock_type*/);
+        $serv->set(array(
+            'reactor_num' => 2, //数值与cpu核心数量相同或2倍
+            'worker_num' => 2, //数值与cpu核心数量相同或2倍
+            //'package_eof' => "\r\n\r\n",  //数据分隔标识，package_eof的设置有\n，则导致与mfc客户端的CString类型冲，突造成解析不完整
+            //'open_eof_check' => 1,
+            'daemonize' => $instc->daemonize, //守护进程
+            'log_file' => $instc->logfile
+        ));
+
+
+        $serv->on('receive', function ($serv, $fd, $reactor_id, $data) {
+            $msgReq = json_decode($data, true);
+            if(is_array($msgReq) && isset($msgReq['msgid']) && isset($msgReq['type'])) {
+                
+                switch($msgReq['type']) {
+                    case 'register':
+                        //echo 'register'.PHP_EOL;
+
+                        $form = [
+                            'account' => $msgReq["account"],
+                            'password' => $msgReq["password"],
+                            'repassword' => $msgReq["repassword"]
+                        ];
+                        //todo:用task处理
+                        $msg = '';
+                        if(true === $error = User::register($form)) {
+                            $msg = 'register注册成功'.PHP_EOL;
+                        } else {
+                            $msg = 'register注册失败 ['.$error['number'].']: '.$error['desc'].PHP_EOL;
+                        }
+                        $msgRecv = array(
+                            'msgid' => $msgReq['msgid'],
+                            'type' => 'respond',
+                            'status' => 'fail',
+                            'data' => $msg
+                        );
+                        $serv->send($fd, json_encode($msgRecv));
+                    break;
+                    case 'login':
+
+                    break;
+                    case 'chat':
+                    break;
+                    case 'list':
+                    break;
+                }
+
+                // 回复消息到达
+                $msgRecv = array(
+                    'msgid' => $msgReq['msgid'],
+                    'type' => 'ack',
+                    'status' => 'ok'
+                );
+                $serv->send($fd, json_encode($msgRecv));
+            } else {
+                //todo: 业务不需要处理的，用日志记录用于分析
+            }
+
+        });
+
+        
+        /*
+        $serv->on('start', array($this, 'onStart'));
+		$serv->on('managerStart', array($instc, 'onManagerStart'));
+		$serv->on('workerStart', array($instc, 'onWorkerStart'));
+		$serv->on('connect', array($instc, 'onConnect'));
+        $serv->on('close', array($instc, 'onClose'));
+        
+
+        $serv->on('workerStop', function(Server $server, int $worker_id) {
+
+        });
+        $serv->on('workerExit', function(Server $server, int $worker_id) {
+
+        });
+        $serv->on('managerStop', function(Server $server) {
+
+        });
+        $serv->on('shutdown', function(Server $server) {
+
+        });
+
+
+        $serv->on('receive', array($instc, 'onReceive'));
+        $serv->on('task', function(Server $server, int $task_id, int $src_worker_id, mixed $data) {
+            
+            return $data;
+        });
+        $serv->on('finish', function(Server $server, int $task_id, string $data) {
+
+        });
+        $serv->on('pipeMessage', function(Server $server, int $src_worker_id, mixed $message) {
+ 
+        });
+
+        $serv->on('workerError', array($instc, 'onWorkerError'));
+        */
+
+        return $serv->start();
+    }
+
+    private function disposeMsg() {
+
     }
 
     /**
@@ -282,4 +418,6 @@ class TcpServer
     {
         return self::$instance->error;
     }
+
+
 }

@@ -3,7 +3,7 @@
  * @Author: Raven 
  * @Date: 2020-01-15 23:35:17 
  * @Last Modified by: Raven
- * @Last Modified time: 2020-01-15 23:37:43
+ * @Last Modified time: 2020-01-16 01:02:29
  */
 declare(strict_types = 1);
 
@@ -24,8 +24,13 @@ class Error
     ];
 
     public static $message_nulla = [
-        'number' => 1,
+        'number' => 3,
         'desc' => '用户注册接口信息异常'
+    ];
+
+    public static $start_fail = [
+        'number' => 4,
+        'desc' => 'tcp server 启动失败'
     ];
 
 
