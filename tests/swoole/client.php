@@ -23,7 +23,10 @@ $message = array(
 	"repassword" => "123456"
 );
 $client->send(json_encode($message));
-echo $client->recv();
+
+while(true){
+	echo $client->recv();
+}
 $client->close();
 
 

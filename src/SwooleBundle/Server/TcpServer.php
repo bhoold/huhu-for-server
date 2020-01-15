@@ -3,7 +3,7 @@
  * @Author: Raven 
  * @Date: 2020-01-15 19:30:53 
  * @Last Modified by: Raven
- * @Last Modified time: 2020-01-16 02:19:26
+ * @Last Modified time: 2020-01-16 04:00:11
  */
 declare(strict_types = 1);
 
@@ -307,6 +307,8 @@ class TcpServer
         $serv->set(array(
             'reactor_num' => 2, //数值与cpu核心数量相同或2倍
             'worker_num' => 2, //数值与cpu核心数量相同或2倍
+            'task_worker_num' => 10,
+            "task_enable_coroutine" => true,
             //'package_eof' => "\r\n\r\n",  //数据分隔标识，package_eof的设置有\n，则导致与mfc客户端的CString类型冲，突造成解析不完整
             //'open_eof_check' => 1,
             'daemonize' => $instc->daemonize, //守护进程
@@ -317,10 +319,11 @@ class TcpServer
         $serv->on('receive', function ($serv, $fd, $reactor_id, $data) {
             $msgReq = json_decode($data, true);
             if(is_array($msgReq) && isset($msgReq['msgid']) && isset($msgReq['type'])) {
-                
+
                 switch($msgReq['type']) {
                     case 'register':
                         //echo 'register'.PHP_EOL;
+
 
                         $form = [
                             'account' => $msgReq["account"],
@@ -328,6 +331,13 @@ class TcpServer
                             'repassword' => $msgReq["repassword"]
                         ];
                         //todo:用task处理
+                        $serv->task([
+                            'fd' => $fd,
+                            'msgid' => $msgReq['msgid'],
+                            'form' => $form
+                        ]);
+
+                        /*
                         $msg = '';
                         if(true === $error = User::register($form)) {
                             $msg = 'register注册成功'.PHP_EOL;
@@ -341,6 +351,7 @@ class TcpServer
                             'data' => $msg
                         );
                         $serv->send($fd, json_encode($msgRecv));
+                        */
                     break;
                     case 'login':
 
@@ -364,7 +375,35 @@ class TcpServer
 
         });
 
-        
+        $serv->on('task', function(Server $serv, Server\Task $task) {
+        //$serv->on('task', function(Server $serv, int $task_id, int $src_worker_id, array $data) { //服务设置task_enable_coroutine后，这行无效
+            
+            $data = $task->data;
+            $fd = $task->data['fd'];
+            $msgid = $task->data['msgid'];
+            $form = $task->data['form'];
+
+            $msg = '';
+
+            //echo '注册用户...'.PHP_EOL;
+            if(true === $error = User::register($form)) {
+                $msg = 'register注册成功'.PHP_EOL;
+            } else {
+                $msg = 'register注册失败 ['.$error['number'].']: '.$error['desc'].PHP_EOL;
+            }//echo '注册ok...'.PHP_EOL;
+            $msgRecv = array(
+                'msgid' => $msgid,
+                'type' => 'respond',
+                'status' => 'fail',
+                'data' => $msg
+            );
+            $serv->send($fd, json_encode($msgRecv));
+            
+            return $data;
+        });
+        $serv->on('finish', function(Server $serv, int $task_id, array $data) {
+            print_r($data);
+        });   
         /*
         $serv->on('start', array($this, 'onStart'));
 		$serv->on('managerStart', array($instc, 'onManagerStart'));
