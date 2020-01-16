@@ -56,13 +56,20 @@ class ServerCommand extends Command
         if($logfile[0] !== '/') {
             $logfile = $_ENV['PWD'].DIRECTORY_SEPARATOR.$logfile;
         }
+        // tags: error, info, comment, question
+        if($daemonize) {
+            $output->writeln("<comment>tcpserver run in daemonize mode</comment>");
+        } else {
+            $output->writeln("<comment>start tcpserver...</comment>");
+        }
 
         if(TcpServer::start($host, $port, $daemonize, $logfile)) {
             //非守护进程会阻塞，等待server停止后才执行
+            //守护进程start之后的不显示，所以下面这句不执行
             $output->writeln("<comment>tcpserver start succeed.</comment>");
         } else {
             $error = TcpServer::getError();
-            $output->writeln("<comment>tcpserver start failed [".$error['number']."]: ".$error['desc'].".</comment>");
+            $output->writeln("<error>tcpserver start failed [".$error['number']."]: ".$error['desc'].".</error>");
         }
         return 1;
     }

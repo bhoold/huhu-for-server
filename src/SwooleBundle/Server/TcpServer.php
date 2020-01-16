@@ -149,7 +149,7 @@ class TcpServer
         $instc = self::$instance;
 
         swoole_set_process_name($instc->processName);
-
+        
         //return $instc->goServ();
         return $instc->asyncServ();
     }
@@ -159,13 +159,23 @@ class TcpServer
      *
      * @return boolean
      */
-    private function goServ(): boolean
+    private function goServ(): bool
     {
         $instc = self::$instance;
+        $started = true;
 
         $scheduler = new Co\Scheduler;
-        $scheduler->add(function () use($instc) {
-            $serv = new Co\Server($instc->host, $instc->port, $instc->ssl, $instc->reuse_port);
+        $scheduler->add(function () use($instc, $started) {
+            try {
+                $serv = new Co\Server($instc->host, $instc->port, $instc->ssl, $instc->reuse_port);
+            } catch (\Throwable $th) {
+                echo 'goServ start fail ['.$th->getCode().']: '.$th->getMessage().PHP_EOL;
+                //todo:写入日志 Log::write($th->getTraceAsString());
+            }
+            if(!isset($serv)) {
+                $started = false;
+                return false;
+            }
             $serv->set(array(
                 'reactor_num' => 2, //数值与cpu核心数量相同或2倍
                 'worker_num' => 2, //数值与cpu核心数量相同或2倍
@@ -280,17 +290,22 @@ class TcpServer
                     }
                 }
             });
-            if(false === $serv->start()) { //此代码没有场景验证
-                //$serv->errCode
-                $instc->error = Error::$start_fail;
-                throw new Exception($serv->errCode.Error::$start_fail['desc']);
+            //start会阻塞，之后的代码暂时没有办法验证
+            if(false === $serv->start()) {
+                $started = false;
+                return false;
             }
+            return true;
         });
 
 		if(false === $scheduler->start()) {
             $instc->error = Error::$scheduler_fail;
             return false;
         }
+        if(!$started) {
+            $instc->error = Error::$start_fail;
+            return false;
+        };
         return true;
     }
 
@@ -299,11 +314,21 @@ class TcpServer
      *
      * @return boolean
      */
-    private function asyncServ(): boolean
+    private function asyncServ(): bool
     {
         $instc = self::$instance;
-        
-        $serv = new Server($instc->host, $instc->port/*, $mode, $sock_type*/);
+
+        try {
+            $serv = new Server($instc->host, $instc->port/*, $mode, $sock_type*/);
+        } catch (\Throwable $th) {
+            //echo 'asyncServ start fail ['.$th->getCode().']: '.$th->getMessage().PHP_EOL; // 自动弹出错误，不需要echo
+            //todo:写入日志 Log::write($th->getTraceAsString());
+        }
+        if(!isset($serv)) {
+            $instc->error = Error::$start_fail;
+            return false;
+        }
+
         $serv->set(array(
             'reactor_num' => 2, //数值与cpu核心数量相同或2倍
             'worker_num' => 2, //数值与cpu核心数量相同或2倍
@@ -314,7 +339,6 @@ class TcpServer
             'daemonize' => $instc->daemonize, //守护进程
             'log_file' => $instc->logfile
         ));
-
 
         $serv->on('receive', function ($serv, $fd, $reactor_id, $data) {
             $msgReq = json_decode($data, true);
@@ -455,6 +479,7 @@ class TcpServer
      */
     public static function getError(): array
     {
+        //\var_dump(self::$instance);
         return self::$instance->error;
     }
 
